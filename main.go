@@ -270,6 +270,7 @@ func reservations(svc *ec2.EC2, awsRegion string) {
 	resp, err := svc.DescribeReservedInstances(params)
 	if err != nil {
 		fmt.Println("there was an error listing instances in", awsRegion, err.Error())
+		log.Fatal(err.Error())
 	}
 
 	ris := map[string]*ec2.ReservedInstances{}
@@ -300,8 +301,8 @@ func reservations(svc *ec2.EC2, awsRegion string) {
 	}
 	rilresp, err := svc.DescribeReservedInstancesListings(rilparams)
 	if err != nil {
-		fmt.Println("there was an error listing reserved instances listingsin", awsRegion, err.Error())
-		return
+		fmt.Println("there was an error listing reserved instances listings in", awsRegion, err.Error())
+		log.Fatal(err.Error())
 	}
 	rilInstanceCount.Reset()
 
@@ -407,7 +408,11 @@ func spots(svc *ec2.EC2, awsRegion string) {
 
 		labels["instance_profile"] = "unknown"
 		if r.LaunchSpecification != nil && r.LaunchSpecification.IamInstanceProfile != nil {
-			labels["instance_profile"] = *r.LaunchSpecification.IamInstanceProfile.Name
+			if r.LaunchSpecification.IamInstanceProfile.Name != nil {
+				labels["instance_profile"] = *r.LaunchSpecification.IamInstanceProfile.Name
+			} else {
+				labels["instance_profile"] = *r.LaunchSpecification.IamInstanceProfile.Arn
+			}
 		}
 
 		price := 0.0

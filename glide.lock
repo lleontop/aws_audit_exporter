@@ -1,8 +1,8 @@
-hash: a50e85f359ae62ed993660337254b1a898c0a09a90766fb6e8c1bdacd9518d6e
-updated: 2017-03-09T16:13:21.146750105Z
+hash: f00bf23ccd3e093f0a827dffc9372cb19877bc81d27969ae5041b49b3167cf92
+updated: 2017-11-19T23:21:35.54112+02:00
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: 0e9d407f5635155ef9d4f1fd5c078e9aa236c177
+  version: e4f7e38b704e3ed0acc4a7f8196b777696f6f1f3
   subpackages:
   - aws
   - aws/awserr
@@ -20,23 +20,23 @@ imports:
   - aws/request
   - aws/session
   - aws/signer/v4
+  - internal/shareddefaults
   - private/protocol
   - private/protocol/ec2query
   - private/protocol/query
   - private/protocol/query/queryutil
   - private/protocol/rest
   - private/protocol/xml/xmlutil
-  - private/waiter
   - service/ec2
   - service/sts
 - name: github.com/beorn7/perks
-  version: b965b613227fddccbfffe13eae360ed3fa822f8d
+  version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
   subpackages:
   - quantile
 - name: github.com/go-ini/ini
-  version: c437d20015c2ab6454b7a66a13109ff0fb99e17a
+  version: 32e4c1e6bc4e7d0d8451aa6b75200d19e37a536a
 - name: github.com/golang/protobuf
-  version: c22ae3cf020a21ebb7ae566dccbe90fc8ea4f9ea
+  version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
   subpackages:
   - proto
 - name: github.com/jmespath/go-jmespath
@@ -50,15 +50,17 @@ imports:
   subpackages:
   - prometheus
 - name: github.com/prometheus/client_model
-  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
+  version: 99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 49fee292b27bfff7f354ee0f64e1bc4850462edf
+  version: 2e54d0b93cba2fd133edc32211dcc32c06ef72ca
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: 6c34ef819e19b4e16f410100ace4aa006f0e3bf8
+  version: a6e9df898b1336106c743392c48ee0b71f5c4efa
+  subpackages:
+  - xfs
 testImports: []
