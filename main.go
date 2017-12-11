@@ -15,9 +15,7 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"sort"
@@ -27,16 +25,21 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	//"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/version"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
-	region  = flag.String("region", "eu-west-1", "the region to query")
-	taglist = flag.String("instance-tags", "", "comma seperated list of tag keys to use as metric labels")
-	dur     = flag.Duration("duration", time.Minute*4, "How often to query the API")
-	addr    = flag.String("addr", ":9190", "port to listen on")
+	region  = kingpin.Flag("region","The region to query").Default("eu-west-1").String()
+	taglist = kingpin.Flag("instance-tags","Comma seperated list of tag keys to use as metric labels").String()
+	dur     = kingpin.Flag("duration","How often to query the API").Default("4m").Duration()
+	addr    = kingpin.Flag("addr", "Port to listen on").Default(":9190").String()
+	metricsPath     = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 
 	riLabels = []string{
 		"az",
@@ -114,64 +117,84 @@ var instanceLabelsCacheMutex = sync.RWMutex{}
 var instanceLabelsCache = map[string]prometheus.Labels{}
 var instanceLabelsCacheIsVPC = map[string]bool{}
 
+func init() {
+	prometheus.MustRegister(version.NewCollector("aws_cost_exporter"))
+}
+
+
 func main() {
-	flag.Parse()
+	log.AddFlags(kingpin.CommandLine)
+	kingpin.Version(version.Print("aws_cost_exporter"))
+	kingpin.HelpFlag.Short('h')
+	kingpin.Parse()
 
-	tagl := []string{}
-	for _, tstr := range strings.Split(*taglist, ",") {
-		ctag := tagname(tstr)
-		instanceTags[tstr] = ctag
-		tagl = append(tagl, ctag)
-	}
-	instancesCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "aws_ec2_instances_count",
-		Help: "End time of this reservation",
-	},
-		append(instancesLabels, tagl...))
+	log.Infoln("Starting aws_cost_exporter", version.Info())
+	log.Infoln("Build context", version.BuildContext())
 
-	siCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "aws_ec2_spot_request_count",
-		Help: "Number of active/fullfilled spot requests",
-	},
-		append(siLabels, tagl...))
-	siBidPrice = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "aws_ec2_spot_request_bid_price_hourly_dollars",
-		Help: "cost of spot instances hourly usage in dollars",
-	},
-		append(siLabels, tagl...))
-	siBlockHourlyPrice = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "aws_ec2_spot_request_actual_block_price_hourly_dollars",
-		Help: "fixed hourly cost of limited duration spot instances in dollars",
-	},
-		append(siLabels, tagl...))
+	//tagl := []string{}
+	//for _, tstr := range strings.Split(*taglist, ",") {
+	//	ctag := tagname(tstr)
+	//	instanceTags[tstr] = ctag
+	//	tagl = append(tagl, ctag)
+	//}
+	//instancesCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	//	Name: "aws_ec2_instances_count",
+	//	Help: "End time of this reservation",
+	//},
+	//	append(instancesLabels, tagl...))
+	//
+	//siCount = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	//	Name: "aws_ec2_spot_request_count",
+	//	Help: "Number of active/fullfilled spot requests",
+	//},
+	//	append(siLabels, tagl...))
+	//siBidPrice = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	//	Name: "aws_ec2_spot_request_bid_price_hourly_dollars",
+	//	Help: "cost of spot instances hourly usage in dollars",
+	//},
+	//	append(siLabels, tagl...))
+	//siBlockHourlyPrice = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	//	Name: "aws_ec2_spot_request_actual_block_price_hourly_dollars",
+	//	Help: "fixed hourly cost of limited duration spot instances in dollars",
+	//},
+	//	append(siLabels, tagl...))
+	//
+	//prometheus.Register(instancesCount)
+	//prometheus.Register(riInstanceCount)
+	//prometheus.Register(rilInstanceCount)
+	//prometheus.Register(siCount)
+	//prometheus.Register(siBidPrice)
+	//prometheus.Register(siBlockHourlyPrice)
+	//prometheus.Register(sphPrice)
+	//
+	//sess, err := session.NewSession()
+	//if err != nil {
+	//	log.Fatalf("failed to create session %v\n", err)
+	//}
+	//
+	//svc := ec2.New(sess, &aws.Config{Region: aws.String(*region)})
+	//
+	//go func() {
+	//	for {
+	//		instances(svc, *region)
+	//		go reservations(svc, *region)
+	//		go spots(svc, *region)
+	//		<-time.After(*dur)
+	//	}
+	//}()
 
-	prometheus.Register(instancesCount)
-	prometheus.Register(riInstanceCount)
-	prometheus.Register(rilInstanceCount)
-	prometheus.Register(siCount)
-	prometheus.Register(siBidPrice)
-	prometheus.Register(siBlockHourlyPrice)
-	prometheus.Register(sphPrice)
-
-	sess, err := session.NewSession()
-	if err != nil {
-		log.Fatalf("failed to create session %v\n", err)
-	}
-
-	svc := ec2.New(sess, &aws.Config{Region: aws.String(*region)})
-
-	go func() {
-		for {
-			instances(svc, *region)
-			go reservations(svc, *region)
-			go spots(svc, *region)
-			<-time.After(*dur)
-		}
-	}()
-
-	http.Handle("/metrics", prometheus.Handler())
-
-	log.Println(http.ListenAndServe(*addr, nil))
+	http.Handle(*metricsPath, promhttp.Handler())
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<html>
+			<head><title>AWS Cost Exporter</title></head>
+			<body>
+			<h1>AWS Cost Exporter</h1>
+			<p><a href="` + *metricsPath + `">Metrics</a></p>
+			</body>
+			</html>`))
+	})
+	log.Infoln("Listening on", *addr)
+	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 func instances(svc *ec2.EC2, awsRegion string) {
 	instanceLabelsCacheMutex.Lock()
