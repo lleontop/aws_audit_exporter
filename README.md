@@ -82,4 +82,4 @@ The following labels are exposed:
 
  - Add optional Push gateway support
  - Make tracking full Reserved instance tracking optional and pre-aggregate
-
+ - More
